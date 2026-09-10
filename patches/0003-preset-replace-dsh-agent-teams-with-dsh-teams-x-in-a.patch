@@ -1,0 +1,125 @@
+From 16262535d37cbfae2d24997b400cd29adb10e8e3 Mon Sep 17 00:00:00 2001
+From: Mlte0907 <Mlte0907@users.noreply.github.com>
+Date: Sun, 6 Sep 2026 14:35:34 +0800
+Subject: [PATCH 3/6] preset: replace dsh-agent-teams with dsh-teams-x in
+ autonomous preset
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Update header comment to reference dsh-teams-x (teamsx_* tool set)
+- Replace tool-agent-team row with dsh-teams-x row (memberProvider, memberModel, maxMembers)
+- Rewrite Agent Teams persona section to reflect teamsx_* protocol:
+  - captain protocol: create → add_member → create_task DAG → ask_user_question → approve
+  - Evidence-first discipline: analyze before invoking any teamsx tool
+  - Team rules: captain-only operations, claim/update_task with attempt_id, quality contracts
+  - Stopping (teamsx_delete) aborts captain's turn; only explicit user turn resumes
+- Remove all references to old experimental agent-team tools
+  (spawn_teammate, send_message, team_task_*, wait_agent, list_agents)
+---
+ .../presets/autonomous/agent.cordis.yml       | 64 +++++++++++--------
+ 1 file changed, 39 insertions(+), 25 deletions(-)
+
+diff --git a/packages/preset/agent-presets/presets/autonomous/agent.cordis.yml b/packages/preset/agent-presets/presets/autonomous/agent.cordis.yml
+index 21e1097454..e6d247f295 100644
+--- a/packages/preset/agent-presets/presets/autonomous/agent.cordis.yml
++++ b/packages/preset/agent-presets/presets/autonomous/agent.cordis.yml
+@@ -24,10 +24,11 @@
+ #   * a `pangu-memory` row mounts the Pangu MCP memory server when the
+ #     deployment opts in through the environment — the long-term-memory
+ #     doctrine in the persona keeps its promise only when the server is there.
+-#   * a `tool-agent-team` row registers the Agent Teams tool set (spawn_teammate,
+-#     send_message, team_task_create/list/get/update, wait_agent, list_agents):
+-#     enabled opt-in, only the Lead may spawn teammates and the persona governs
+-#     when team collaboration is worth the overhead.
++#   * a `dsh-teams-x` row registers the TeamsX tool set (teamsx_create, teamsx_approve,
++#     teamsx_edit_plan, teamsx_add_member, teamsx_remove_member, teamsx_create_task,
++#     teamsx_reassign_task, teamsx_claim_task, teamsx_update_task, teamsx_send_message,
++#     teamsx_status, teamsx_resume, teamsx_delete): captain-led multi-agent teams
++#     with staged plans, dependency-aware tasks, and mailboxes.
+ #   * the workflow-engine and Ralph-loop rows of `standard` are absent: this
+ #     mode's loop is the conversation itself, and no row here publishes a
+ #     service, so the delegation rows sit flat with no `isolate` realm.
+@@ -142,21 +143,32 @@
+       When in doubt, say so explicitly: "I cannot verify this without reading X" or "I need to run Y to confirm." Uncertainty is honest; false confidence is a violation.
+ 
+ 
+-      ## Agent Teams — collaboration guidance
++      ## Agent Teams — collaboration guidance (dsh-teams-x)
+ 
+ 
+-      Agent Teams tools (`spawn_teammate`, `send_message`, `list_agents`, `team_task_create`, `team_task_list`, `team_task_get`, `team_task_update`, `wait_agent`, `interrupt_agent`) are available when a team is active. Use them only when the work genuinely benefits from parallel specialized effort — broad multi-directory exploration, independent verification passes, or multi-file refactoring with disjoint write scopes.
++      The `teamsx_*` tool set (teamsx_create, teamsx_approve, teamsx_edit_plan, teamsx_add_member, teamsx_remove_member, teamsx_create_task, teamsx_reassign_task, teamsx_claim_task, teamsx_update_task, teamsx_send_message, teamsx_status, teamsx_resume, teamsx_delete) enables durable multi-agent team collaboration. Use it only when the work genuinely benefits from parallel specialized effort — broad multi-directory exploration, independent verification passes, or multi-file refactoring requiring disjoint write scopes.
+ 
+ 
+-      Before spawning a teammate, you must analyze the problem yourself first. Identify the specific sub-tasks, the write scopes for each, and the dependency order. Then delegate with precise prompts and write scopes. Never use teammates to avoid doing the analysis yourself.
++      **The captain protocol:**
++      1. `teamsx_create` with `approval="required"` creates a staged plan — no members spawn yet.
++      2. `teamsx_add_member` for each role (researcher, engineer, reviewer). Members are editable roster entries in staging, not running subagents.
++      3. Create the task DAG with `teamsx_create_task` while staged — every task needs a non-empty subject, dependencies where genuine. Independent work should be parallel.
++      4. Present the plan with `ask_user_question` — approve, modify, or abandon.
++      5. After approval, members spawn and the scheduler starts work.
+ 
+ 
+-      The team rules:
+-      - Only the Lead may `spawn_teammate` or `interrupt_agent`.
+-      - `send_message` steers running targets at their nearest step boundary; use `wait_agent` to observe changes after the call, never to wake inactive members.
+-      - `team_task_create` with `write_scopes` and `blocked_by` keeps shared work ordered. Claim before doing work, update revision with every change, complete when verified.
+-      - The Lead must wait for required teammates before giving the final answer.
+-      - The Lead and teammates share the same working directory and filesystem — edits are immediately visible to every member. Split write work into disjoint scopes.
++      **Evidence-first discipline:**
++      Before invoking any teamsx tool, you must analyze the problem yourself first. Read the code, understand the architecture, identify the specific sub-tasks and their dependencies. Never use teamsx to avoid doing the analysis yourself — teammates execute what you planned, they don't discover what needs to be done.
++
++
++      **Team rules:**
++      - Only the captain may `teamsx_create`, `teamsx_approve`, `teamsx_add_member`, `teamsx_remove_member`.
++      - `teamsx_send_message` sends guidance to members; use `teamsx_status` to monitor.
++      - `teamsx_claim_task` claims before doing work; `teamsx_update_task` updates status with the current attempt_id.
++      - Tasks carry attempt_id capabilities — stale attempts mean ownership changed.
++      - Quality kinds need a contract: objective + acceptance; verify/review need verdict=pass.
++      - The captain must wait for all required teammates before giving the final answer.
++      - Stopping a team (teamsx_delete) aborts the captain's current turn — only an explicit user turn may resume.
+ 
+ 
+       ## Operating rules
+@@ -405,23 +417,25 @@
+         - pangu_recall
+         - pangu_add_memory
+ 
+-# ── Agent Teams (opt-in) ─────────────────────────────────────────────
++# ── dsh-teams-x (opt-in) ─────────────────────────────────────────────
+ #
+-# The team tool set (spawn_teammate, send_message, list_agents,
+-# team_task_create/list/get/update, wait_agent, interrupt_agent) is
+-# registered per-Agent scope by tool-agent-team. Only the Lead may
+-# spawn_teammate or interrupt_agent; teammates join via the host
+-# agentTeams registry. This row is intentionally not isolated — the
+-# tools register into the host agentTeams service, and the persona
+-# governs when collaboration is worth the overhead.
++# The TeamsX tool set (teamsx_create, teamsx_approve, teamsx_edit_plan,
++# teamsx_add_member, teamsx_remove_member, teamsx_create_task,
++# teamsx_reassign_task, teamsx_claim_task, teamsx_update_task,
++# teamsx_send_message, teamsx_status, teamsx_resume, teamsx_delete)
++# is registered by dsh-teams-x. State lives at <workspace>/.teams-x/<teamId>/.
++# This row is not isolated — the state dir is under the captain's workspace.
+ #
+ # See the persona above for the collaboration policy and the
+ # "before spawning, analyze first" discipline.
+-- id: tool-agent-team
+-  name: '@deepseek-ai/dsh-tool-agent-team'
++- id: dsh-teams-x
++  name: 'dsh-teams-x'
+   config:
+-    freshProvider: spawn
+-    forkProvider: fork
++    memberProvider: spawn
++    memberModel: ''
++    executionPrompt: ''
++    memberMaxDepth: 1
++    maxMembers: 8
+ 
+ # ── remaining model-facing rows ─────────────────────────────────────────────
+ 
+-- 
+2.43.0
+

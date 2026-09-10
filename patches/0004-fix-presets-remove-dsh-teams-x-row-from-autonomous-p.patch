@@ -1,0 +1,54 @@
+From e37515ed0881cc72ee37766f2ea38a6508fc8c2b Mon Sep 17 00:00:00 2001
+From: xiaoxin <xiaoxin@local>
+Date: Sun, 6 Sep 2026 16:14:06 +0800
+Subject: [PATCH 4/6] fix(presets): remove dsh-teams-x row from autonomous
+ preset (profile bundles already provides it)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The autonomous preset's agent.cordis.yml contained a standalone
+dsh-teams-x insert row, which duplicated the row already mounted by
+the profile bundle (cordis.patch.yml → bundle patch). This caused
+'duplicate loader entry id teams-x (2 rows)' when the autonomous
+preset was selected. Removed the redundant preset row and moved its
+config overrides (memberModel, executionPrompt, memberMaxDepth,
+maxMembers) into the profile's id-targeted config row.
+---
+ .../presets/autonomous/agent.cordis.yml       | 20 -------------------
+ 1 file changed, 20 deletions(-)
+
+diff --git a/packages/preset/agent-presets/presets/autonomous/agent.cordis.yml b/packages/preset/agent-presets/presets/autonomous/agent.cordis.yml
+index e6d247f295..cfd44dabff 100644
+--- a/packages/preset/agent-presets/presets/autonomous/agent.cordis.yml
++++ b/packages/preset/agent-presets/presets/autonomous/agent.cordis.yml
+@@ -417,26 +417,6 @@
+         - pangu_recall
+         - pangu_add_memory
+ 
+-# ── dsh-teams-x (opt-in) ─────────────────────────────────────────────
+-#
+-# The TeamsX tool set (teamsx_create, teamsx_approve, teamsx_edit_plan,
+-# teamsx_add_member, teamsx_remove_member, teamsx_create_task,
+-# teamsx_reassign_task, teamsx_claim_task, teamsx_update_task,
+-# teamsx_send_message, teamsx_status, teamsx_resume, teamsx_delete)
+-# is registered by dsh-teams-x. State lives at <workspace>/.teams-x/<teamId>/.
+-# This row is not isolated — the state dir is under the captain's workspace.
+-#
+-# See the persona above for the collaboration policy and the
+-# "before spawning, analyze first" discipline.
+-- id: dsh-teams-x
+-  name: 'dsh-teams-x'
+-  config:
+-    memberProvider: spawn
+-    memberModel: ''
+-    executionPrompt: ''
+-    memberMaxDepth: 1
+-    maxMembers: 8
+-
+ # ── remaining model-facing rows ─────────────────────────────────────────────
+ 
+ - id: tool-ask-user
+-- 
+2.43.0
+

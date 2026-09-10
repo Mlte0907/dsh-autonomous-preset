@@ -1,0 +1,112 @@
+# 灰度模式 Gray Mode
+# 兼顾：minimal极简基底（稳/省） + 精选Harness标准常用工具（够用）
+# 核心特性：POSIX全环境兼容 | 极速响应 | 异常自动重试 | 低资源占用
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: |-
+      You are a high-performance software engineer assistant running in GRAY MODE.
+      Strictly follow all rules below:
+
+      ## 1. Core Principle: Minimalism First
+      - Always take the shortest valid path to complete tasks. Avoid redundant reasoning, speculative exploration, and unnecessary steps.
+      - Prioritize the simplest tool to finish the job. If a single shell command can solve it, do not call multiple file tools.
+      - No unnecessary probing, scanning, or information collection without explicit user request.
+
+      ## 2. Linux Shell Compatibility (POSIX Compliant)
+      - All shell commands MUST use pure POSIX-standard syntax.
+      - FORBIDDEN bash-only features: `[[ ]]` conditional tests, bash associative arrays, process substitution `<()`, bash-specific parameter expansions.
+      - Commands must be compatible with sh / dash / bash across all Linux distributions.
+      - Auto-escape paths, spaces, and special characters properly.
+      - If a shell command fails: automatically retry once with a more compatible POSIX version before reporting error.
+
+      ## 3. Output Rules: Concise & Direct
+      - No verbose explanations, preambles, polite phrases, or step-by-step narration.
+      - Return only final results, core data, or clear error cause + fix solution.
+      - Filter large output inline (via sed/grep) instead of dumping full content.
+      - Keep response length as short as possible, no redundant information.
+
+      ## 4. Tool Usage Guidelines
+      - Use str_replace_editor for precise file edits, minimize full file rewrites.
+      - Use file tools only when shell redirection/pipe is insufficient or unsafe.
+      - All operations must be idempotent; no side effects on repeated execution.
+    complete: true
+    includeRuntimeContext: false
+
+# 持久终端组 - 完全复用minimal原生架构，跨平台自动切换
+- id: persistent-shell
+  name: cordis:group
+  group: true
+  isolate:
+    terminals: true
+  config:
+    - id: pty
+      name: '@deepseek-ai/dsh-terminal'
+
+    - id: terminal-bash
+      name: '@deepseek-ai/dsh-terminal-bash'
+      disabled: !!js process.platform === 'win32'
+      config:
+        timeoutMs: 300000
+
+    - id: persistent-bash
+      name: '@deepseek-ai/dsh-tool-bash-persistent'
+      disabled: !!js process.platform === 'win32'
+      config:
+        timeoutMs: 300000
+        description: |-
+          Run commands in a persistent POSIX-compatible shell.
+          * Command content does NOT need XML-escaping.
+          * No internet access; apt/pip package mirror available.
+          * Shell state persists across calls.
+          * Use POSIX-portable syntax only; avoid bash-only extensions.
+          * Inspect line range: `sed -n 10,25p /path/to/file`
+          * Avoid massive output; filter inline when needed.
+          * Long-lived commands run in background: `sleep 10 &`
+
+    - id: terminal-pwsh
+      name: '@deepseek-ai/dsh-terminal-bash'
+      disabled: !!js process.platform !== 'win32'
+      config:
+        shellDialect: pwsh
+        timeoutMs: 300000
+
+    - id: persistent-pwsh
+      name: '@deepseek-ai/dsh-tool-pwsh-persistent'
+      disabled: !!js process.platform !== 'win32'
+      config:
+        timeoutMs: 300000
+        description: |-
+          Run commands in persistent PowerShell shell.
+          * Command content does NOT need XML-escaping.
+          * No internet access.
+          * Shell state persists across calls.
+          * Use native Windows paths and PowerShell semantics.
+          * Avoid massive output. Use Start-Job for long-running tasks.
+
+# 文件系统组 - minimal原生组件 + 精选标准常用工具
+- id: filesystem
+  name: cordis:group
+  group: true
+  isolate:
+    fs: true
+  config:
+    - id: fs-local
+      name: '@deepseek-ai/dsh-fs-local'
+      config:
+        cwd: !!js process.env.DSH_CWD ?? process.cwd()
+
+    # === minimal原生保留工具 ===
+    - id: str-replace-editor
+      name: '@deepseek-ai/dsh-tool-str-replace-editor'
+      config:
+        maxOutputChars: 16000
+
+    # === 精选Harness标准常用工具（高频低开销） ===
+    - id: tool-fs
+      name: '@deepseek-ai/dsh-tool-fs'
+
+    - id: tool-fs-search
+      name: '@deepseek-ai/dsh-tool-fs-search'
+      config:
+        sampleOverCapGlobResults: false
