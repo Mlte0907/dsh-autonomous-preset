@@ -1,0 +1,26 @@
+{
+  "name": "dsh-autonomous-preset",
+  "version": "0.2.0",
+  "description": "DSH agent preset 自主模式 (autonomous) — bundle patch for dsh 0.1.7-alpha.2",
+  "keywords": [
+    "dsh",
+    "agent-preset",
+    "autonomous"
+  ],
+  "files": [
+    "cordis.patch.yml",
+    "presets",
+    "patches",
+    "local-presets",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mlte0907/dsh-autonomous-preset.git"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
