@@ -1,5 +1,5 @@
-# The `autonomous` agent preset: the standard coding agent tuned for unattended
-# operation, modeled on ZCode's Agent mode.
+# The `autonomous` agent preset: a self-directed coding agent tuned for
+# unattended, hands-off operation.
 #
 # The toolset matches `standard` — shell, filesystem, search, background jobs,
 # skills, goals, plan mode, compaction, delegation, web — because the tuning of
@@ -444,8 +444,8 @@
   name: '@deepseek-ai/dsh-tool-ask-user'
 
 # `allowParallelInProgress: false` is the todo discipline of this mode: the
-# list mirrors ZCode's working plan — exactly one front at a time — instead of
-# a batch queue. `standard` relaxes this to `true`.
+# list keeps exactly one front at a time — a plan, not a batch queue.
+# `standard` relaxes this to `true`.
 - id: tool-todo
   name: '@deepseek-ai/dsh-tool-todo'
   config:

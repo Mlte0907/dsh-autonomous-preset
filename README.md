@@ -18,6 +18,10 @@ dsh-restart
 装完在 Web 设置「默认模式」里把它设为默认(旧 settings.yaml 的 `agent-presets.default`
 机制已废除),或在会话的模式选择器里单次切换(选择器默认开启)。
 
+> 2026-09-23 起,本机 dsh 已把该预设作为**内置预设**挂载(harness web-app bundle 的
+> `presets/autonomous.patch.yml`);本仓库安装法面向其他机器与重装恢复。
+> 「内部模式」预设已删除,其回退理念并入自主模式第 5 条(文件见历史提交 a663ef6)。
+
 ## 相对 0.1.5 版的调整(2026-09,逐条对着 0.1.7 源码取证)
 
 1. **清除 teamsx 死引用**:`dsh-teams-x` / `teamsx_*` 工具在 0.1.7 全仓不存在(grep 零命中)。
@@ -32,6 +36,9 @@ dsh-restart
 3. **恢复 plan-mode**:0.1.5-alpha.1 时代因 `@deepseek-ai/dsh-plan-mode` 包不存在而裁掉;
    0.1.7 已有该包(standard 同款),恢复 planning group(与 standard 的块逐字节同源),
    头部注释与实际行集重新一致。
+4. **删除外部产品对齐表述**:header、description、tool-todo 注释中「仿照某外部 Agent 产品模式」的表述全部移除(历史 `patches/0001` 为不可变 git am 补丁,内文保留)。
+5. **注明回退机制**:第三方工具缺席时回退本预设自带能力——Team 工具集缺席 → subagent 委派(explore/judge/subagent + send_message/list_agents/interrupt_agent);Pangu MCP 缺席 → **明示用户**后用 todo/goal/skill 行维持状态,不静默跳过。
+6. **端到端 UI 验收与重启入 persona**:按历史记忆固化 Playwright 挂 `/usr/bin/chromium`(`~/.chromium-browser-snapshots` 那份是坏的,勿用)的真浏览器验收法,以及 `dsh-restart` 重启方式(只有其输出里的新 token 有效)。
 
 行集本身零改动:全部 row config 键(`prefix`/`maxBytes`/`sampleOverCapGlobResults`/
 `provider`/`backgroundMode`/`persona`/`toolFilter`/isolate)逐个对过 0.1.7 Config schema,
@@ -46,19 +53,3 @@ dsh-restart
 | `presets/autonomous/` | 0.1.5 留档 | 旧格式(`preset.yml` + `agent.cordis.yml`),0.1.7 不可安装 |
 | `patches/0001..0006` | 历史 | 对旧 harness 树的 git am 补丁,上游结构已变,仅存档 |
 | `local-presets/gray-mode/` | 留档 | 未启用;`text:` 键自 0.1.3-alpha.2 起非法,复活需改 `prefix` |
-| `local-presets/internal/` | 留档 | 「内部模式」预设(本机专属),不进本 bundle、不上游 harness |
-
-## internal(内部模式)
-
-以自主模式为底的本机精修版(order 6),相对 autonomous 的 persona 差量:
-
-- 盘古门在工具缺席时**明示用户后继续**,不静默跳过;
-- 证据铁律收敛为一节:证据不足即停、先说明缺什么并等确认;猜测只作待验证假设,不得直接执行;
-- 盘古记忆门写入带 `wing default / room general` 与项目名 tags。
-
-**本机专属**:经本地 bundle 安装,仓库内仅留档:
-
-```bash
-pnpm dsh plugin --profile web add link:$HOME/.dsh/plugins/dsh-internal-preset
-dsh-restart
-```

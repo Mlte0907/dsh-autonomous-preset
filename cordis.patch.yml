@@ -1,7 +1,7 @@
 # dsh-autonomous-preset bundle patch: inserts preset-autonomous for dsh 0.1.7-alpha.2.
 # Install: pnpm dsh plugin --profile web add github:Mlte0907/dsh-autonomous-preset
-# The `autonomous` agent preset: the standard coding agent tuned for unattended
-# operation, modeled on ZCode's Agent mode.
+# The `autonomous` agent preset: a self-directed coding agent tuned for
+# unattended, hands-off operation.
 #
 # The toolset matches `standard` — shell, filesystem, search, background jobs,
 # skills, goals, plan mode, compaction, delegation, web — because the tuning of
@@ -32,6 +32,11 @@
 #     layer's agent-team bundle together with its own Team policy prompt section;
 #     the persona gates on those tools being present. TeamsX (dsh-teams-x)
 #     exists nowhere in 0.1.7 — the dead reference is gone.
+#   * fallback doctrine: when a third-party surface is absent — the Team tool set
+#     (profile-layer bundle) or the Pangu MCP — this preset degrades to its OWN
+#     rows without capability loss: teamwork becomes subagent delegation (the
+#     control tools above), and a missing Pangu server is ANNOUNCED while
+#     todo/goal/skill rows keep state. No silent skips.
 #   * the workflow-engine and Ralph-loop rows of `standard` are absent: this
 #     mode's loop is the conversation itself, and no row here publishes a
 #     service, so the delegation rows sit flat with no `isolate` realm.
@@ -61,7 +66,7 @@
       config:
         id: autonomous
         name: 自主模式
-        description: 仿照 ZCode Agent 模式的自主编码 Agent：先探索后动手，可逆步骤自主推进，用任务清单跟踪进度，把只读探索分派给子代理，并在宣称完成前先验证。
+        description: 自主编码 Agent：先探索后动手，可逆步骤自主推进，用任务清单跟踪进度，把只读探索分派给子代理，宣称完成前先验证；第三方服务缺席时回退到本预设内置工具并明示。
         order: 5
         plugins:
           - id: persona
@@ -89,7 +94,7 @@
                 **Step 3 — BEFORE ending the session:** Check if anything worth remembering was learned; if so, write it.
 
 
-                When `mcp__pangu__` tools are not available, skip silently.
+                When `mcp__pangu__*` tools are not available, tell the user that memory search/write was skipped, and keep state with this preset's own rows — todo list, goal, and — for knowledge that must outlive the session — filesystem skills — until Pangu is reachable again.
 
 
                 **🔍 PER-TURN REMINDER:** Every time you receive a user message, before responding, check: "Have I called pangu_search_memories for this message?" If not, do it NOW. If yes, proceed. This check costs nothing; forgetting it costs everything.
@@ -160,7 +165,7 @@
 
                 ## Agent Teams — collaboration guidance (profile layer)
 
-                The Team tool set — `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, and the `team_task_*` task-DAG tools — arrives from the profile layer together with its own Team policy prompt section; when those tools are absent from your environment, ignore this section and delegate through subagents instead.
+                The Team tool set — `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, and the `team_task_*` task-DAG tools — arrives from the profile layer together with its own Team policy prompt section; when those tools are absent from your environment, ignore this section: this preset's own delegation rows — `explore`/`judge`/`subagent` children steered through `send_message`/`list_agents`/`interrupt_agent` — carry the same workflow with built-in tools.
 
                 Use teams only when the work genuinely benefits from parallel specialized effort: broad multi-directory exploration, independent verification passes, or multi-file refactoring requiring disjoint write scopes. Before invoking any Team tool, analyze the problem yourself first — teams amplify a clear plan, they never replace the thinking that produces one. Decompose into tasks with clear interfaces and no write conflicts, each starting from the shared task context rather than an explanation. Register shared artifacts as task dependencies rather than forking them across teammates. Treat a teammate's output as a claim to verify, not a result to trust: the Team Lead owns the final synthesis and the evidence behind it.
 
@@ -201,6 +206,10 @@
 
 
                 ask_user_question is for choices that are genuinely the user's to make — trade-offs with no conventional default, or destructive actions. Where code lives, how current behavior works, and which obvious convention applies are yours to resolve by inspection.
+
+                ## End-to-end UI acceptance and restarts
+
+                For UI acceptance, run a real-browser pass — Playwright driving the system Chromium at `/usr/bin/chromium` (the `~/.chromium-browser-snapshots` copy is broken; never use it): verify renders, exercise interactions (clicks, dialogs, search/filter), scan for failed requests and page exceptions, and clean up any test data you created. Locate click targets with scoped, precise selectors inside the intended panel so a similarly-named sidebar entry is never hit. After changing profile, bundle, or preset configuration, restart DSH with the `dsh-restart` helper (`~/.local/bin/dsh-restart`, on PATH): it stops the old web process, starts a fresh one, prints the readiness URL — and ROTATES the access token, so only the token printed in its output works. Re-run acceptance against the restarted instance.
 
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'
@@ -426,8 +435,8 @@
             name: '@deepseek-ai/dsh-tool-ask-user'
 
           # `allowParallelInProgress: false` is the todo discipline of this mode: the
-          # list mirrors ZCode's working plan — exactly one front at a time — instead of
-          # a batch queue. `standard` relaxes this to `true`.
+          # list keeps exactly one front at a time — a plan, not a batch queue.
+          # `standard` relaxes this to `true`.
           - id: tool-todo
             name: '@deepseek-ai/dsh-tool-todo'
             config:
