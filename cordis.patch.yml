@@ -1,5 +1,5 @@
-# dsh-autonomous-preset bundle patch: inserts preset-autonomous for dsh 0.2.0-rc.1.
-# Install: pnpm dsh plugin --profile web add github:Mlte0907/dsh-autonomous-preset
+# Built-in agent preset `autonomous` (自主模式), shipped by the web-app bundle:
+# registered in packages/bundle/web-app/package.json under dsh.bundle.patch.
 # The `autonomous` agent preset: a self-directed coding agent tuned for
 # unattended, hands-off operation.
 #
@@ -31,7 +31,7 @@
 #     interrupt_agent, team_task_create/list/get/update) arrives from the profile
 #     layer's agent-team bundle together with its own Team policy prompt section;
 #     the persona gates on those tools being present. TeamsX (dsh-teams-x)
-#     exists nowhere in 0.2.0-rc.1 — the dead reference is gone.
+#     exists nowhere in 0.1.7 — the dead reference is gone.
 #   * fallback doctrine: when a third-party surface is absent — the Team tool set
 #     (profile-layer bundle) or the Pangu MCP — this preset degrades to its OWN
 #     rows without capability loss: teamwork becomes subagent delegation (the
@@ -65,12 +65,6 @@
       name: '@deepseek-ai/dsh-agent-preset'
       config:
         id: autonomous
-        # No `name` / `description` here on purpose: `isBuiltInPreset` in
-        # @deepseek-ai/dsh-agent-preset-registry treats a declaration that names
-        # itself as owning its own copy, so publishing them would pin every locale
-        # to this text. Leaving them absent resolves the roster through the
-        # `presetAutonomousName` / `presetAutonomousDescription` dictionary keys,
-        # which is what the built-in copy in the harness web-app bundle does.
         order: 5
         plugins:
           - id: persona
@@ -453,4 +447,3 @@
             config:
               fetch: true
               searchTimeoutMs: 60000
-

@@ -53,11 +53,16 @@ dsh-restart
 - 本文件引用的 21 个 `@deepseek-ai/dsh-*` 包在 0.2.0-rc.1 树里全部可解析。
 - `teams-x` / `teamsx` 在 0.2.0-rc.1 的 `packages/` 与 `apps/` 里仍然零命中,第 1 条继续成立。
 
-仓库侧改动两处:一是版本表述(header、`package.json` description、README);二是**删除
-`config` 里自带的 `name` / `description`**。`isBuiltInPreset` 把「自带 name 的声明」判为
-自有文案,留着会把所有语言都钉死成中文;删掉后与 harness 内置副本一致,走 0.2.0-rc.1 新增的
-`presetAutonomousName` / `presetAutonomousDescription` 字典键。代价:装到 0.1.7 机器上时
-不再有自带名称(该版本的字典键尚不存在)。工具行集与 persona 始终未动。
+仓库侧改动两处:`package.json` description 与本文的版本表述,以及**删除 `config` 里自带的
+`name` / `description`**。`isBuiltInPreset` 把「自带 name 的声明」判为自有文案,留着会把所有
+语言都钉死成中文;删掉后走 0.2.0-rc.1 新增的 `presetAutonomousName` /
+`presetAutonomousDescription` 字典键。代价:装到 0.1.7 机器上时不再有自带名称(该版本的字典键
+尚不存在)。工具行集与 persona 始终未动。
+
+`cordis.patch.yml` 现与 harness 内置副本
+`packages/bundle/web-app/presets/autonomous.patch.yml` **逐字节相同**,以后以本机那份为准同步:
+内置副本随 harness 升级一起变,本仓库不再单独维护文件头部措辞(该头部现在描述的是内置注册
+位置,安装命令见上文)。
 
 ## 仓库结构
 
