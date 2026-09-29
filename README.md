@@ -1,26 +1,49 @@
 # dsh-autonomous-preset
 
-DSH agent 预设「自主模式」(autonomous) 的备份与安装源,适配 **dsh 0.2.0-rc.1** 的
-bundle 机制。
+DSH agent 预设「自主模式」(autonomous) 的**一份文件**。它不是插件:放进 dsh 的内置 Agent
+预设列表,就会多出一个预设。目标版本 **dsh 0.2.0-rc.1**。
 
-> 历史:本仓库在 0.1.5-rc.1 时代以「目录直接放进 harness」的方式工作(`presets/` +
-> `patches/`)。0.1.7-alpha.2 起 registry(`dsh-agent-presets`)不再扫描预设目录,
-> 新增/覆盖预设只能通过 bundle patch 插入一行 `@deepseek-ai/dsh-agent-preset` ——
-> 本仓库已按新机制改造,旧结构原样留档。
+> 历史:本仓库在 0.1.5-rc.1 时代以「目录直接放进 harness」的方式工作(一份 `presets/` 目录
+> + 一串 `patches/` 补丁)。0.1.7-alpha.2 起 registry(`dsh-agent-presets`)不再扫描预设目录,
+> 新增预设只能靠 bundle patch 插入一行 `@deepseek-ai/dsh-agent-preset` ——
+> 仓库已收敛为下面这一份文件,旧结构留在 git 历史里(`1d27f14` 及更早)。
 
-## 安装(dsh 0.2.0-rc.1)
+## 放进内置预设列表(dsh 0.2.0-rc.1)
 
-```bash
-pnpm dsh plugin --profile web add github:Mlte0907/dsh-autonomous-preset
-dsh-restart
-```
+**三步,缺一不生效:**
 
-装完在 Web 设置「默认模式」里把它设为默认(旧 settings.yaml 的 `agent-presets.default`
+1. 把 `cordis.patch.yml` 复制到 web-app bundle 的预设目录:
+
+   ```
+   packages/bundle/web-app/presets/autonomous.patch.yml
+   ```
+
+2. 在同一个 bundle 的 `packages/bundle/web-app/package.json` 里,把它的路径追加进
+   `dsh.bundle.patch` 数组(数组顺序即应用顺序,放最后):
+
+   ```json
+   "./presets/autonomous.patch.yml"
+   ```
+
+3. 重建并重启:`pnpm run build`,然后 `dsh-restart`(只有它输出的新 token 有效)。
+
+**为什么第 2 步不能省**:预设没有目录扫描发现机制。`packages/boot/app-boot/src/profile.ts:73`
+的 `bundlePatchPaths()` 只返回 manifest `dsh.bundle.patch` 里列出的文件,再由
+`packages/boot/plugin-manager/src/index.ts:548/634/741` 逐个 `loadOverlayPatches`。
+只把文件丢进 `presets/` 而不加数组条目,预设不会出现。文件被加载后,那一行
+`@deepseek-ai/dsh-agent-preset` 在激活时注册进 registry
+(`packages/preset/agent-preset/src/index.ts:28`),`id: autonomous`、`order: 5`。
+
+**不要既内置又装成 bundle**:`AgentPresets.register()` 遇到重复 id 直接抛
+`Duplicate agent preset: autonomous`(`packages/preset/agent-preset-registry/src/index.ts:84`),
+启动失败,不是静默覆盖。
+
+完成后在 Web 设置「默认模式」里把它设为默认(旧 settings.yaml 的 `agent-presets.default`
 机制已废除),或在会话的模式选择器里单次切换(选择器默认开启)。
 
-> 2026-09-23 起,本机 dsh 已把该预设作为**内置预设**挂载(harness web-app bundle 的
-> `presets/autonomous.patch.yml`);本仓库安装法面向其他机器与重装恢复。
-> 「内部模式」预设已删除,其回退理念并入自主模式第 5 条(文件见历史提交 a663ef6)。
+> 2026-09-23 起,本机 dsh 已按上面的三步把它挂成**内置预设**;
+> 本仓库是那份文件的备份与同步源。「内部模式」预设已删除,其回退理念并入自主模式第 5 条
+> (文件见历史提交 a663ef6)。
 
 ## 相对 0.1.5 版的调整(2026-09,逐条对着 0.1.7 源码取证)
 
@@ -36,7 +59,7 @@ dsh-restart
 3. **恢复 plan-mode**:0.1.5-alpha.1 时代因 `@deepseek-ai/dsh-plan-mode` 包不存在而裁掉;
    0.1.7 已有该包(standard 同款),恢复 planning group(与 standard 的块逐字节同源),
    头部注释与实际行集重新一致。
-4. **删除外部产品对齐表述**:header、description、tool-todo 注释中「仿照某外部 Agent 产品模式」的表述全部移除(历史 `patches/0001` 为不可变 git am 补丁,内文保留)。
+4. **删除外部产品对齐表述**:header、description、tool-todo 注释中「仿照某外部 Agent 产品模式」的表述全部移除(当时的 `patches/0001` 为不可变 git am 补丁,内文保留;该补丁目录已随旧结构移出仓库,见 git 历史)。
 5. **注明回退机制**:第三方工具缺席时回退本预设自带能力——Team 工具集缺席 → subagent 委派(explore/judge/subagent + send_message/list_agents/interrupt_agent);Pangu MCP 缺席 → **明示用户**后用 todo/goal/skill 行维持状态,不静默跳过。
 6. **端到端 UI 验收与重启入 persona**:按历史记忆固化 Playwright 挂 `/usr/bin/chromium`(`~/.chromium-browser-snapshots` 那份是坏的,勿用)的真浏览器验收法,以及 `dsh-restart` 重启方式(只有其输出里的新 token 有效)。
 
@@ -53,23 +76,23 @@ dsh-restart
 - 本文件引用的 21 个 `@deepseek-ai/dsh-*` 包在 0.2.0-rc.1 树里全部可解析。
 - `teams-x` / `teamsx` 在 0.2.0-rc.1 的 `packages/` 与 `apps/` 里仍然零命中,第 1 条继续成立。
 
-仓库侧改动两处:`package.json` description 与本文的版本表述,以及**删除 `config` 里自带的
-`name` / `description`**。`isBuiltInPreset` 把「自带 name 的声明」判为自有文案,留着会把所有
-语言都钉死成中文;删掉后走 0.2.0-rc.1 新增的 `presetAutonomousName` /
-`presetAutonomousDescription` 字典键。代价:装到 0.1.7 机器上时不再有自带名称(该版本的字典键
-尚不存在)。工具行集与 persona 始终未动。
+仓库侧改动两处:本文的版本表述,以及**删除 `config` 里自带的 `name` / `description`**。
+`isBuiltInPreset` 把「自带 name 的声明」判为自有文案,留着会把所有语言都钉死成中文;删掉后走
+0.2.0-rc.1 新增的 `presetAutonomousName` / `presetAutonomousDescription` 字典键。代价:放到
+0.1.7 机器上时不再有自带名称(该版本的字典键尚不存在)。工具行集与 persona 始终未动。
 
 `cordis.patch.yml` 现与 harness 内置副本
 `packages/bundle/web-app/presets/autonomous.patch.yml` **逐字节相同**,以后以本机那份为准同步:
 内置副本随 harness 升级一起变,本仓库不再单独维护文件头部措辞(该头部现在描述的是内置注册
-位置,安装命令见上文)。
+位置)。
 
 ## 仓库结构
 
-| 路径 | 状态 | 说明 |
-| --- | --- | --- |
-| `cordis.patch.yml` | **现行** | bundle patch,插入 `preset-autonomous` 行(order 5) |
-| `package.json` | **现行** | bundle manifest(`dsh.bundle.patch`) |
-| `presets/autonomous/` | 0.1.5 留档 | 旧格式(`preset.yml` + `agent.cordis.yml`),0.1.7 不可安装 |
-| `patches/0001..0006` | 历史 | 对旧 harness 树的 git am 补丁,上游结构已变,仅存档 |
-| `local-presets/gray-mode/` | 留档 | 未启用;`text:` 键自 0.1.3-alpha.2 起非法,复活需改 `prefix` |
+| 路径 | 说明 |
+| --- | --- |
+| `cordis.patch.yml` | 全部内容:插入 `preset-autonomous` 行(`id: autonomous`、`order: 5`、22 行插件) |
+| `README.md` | 本文件 |
+
+仓库里没有别的东西:没有 `package.json`,不是 bundle 也不是插件。
+0.1.5 时代的 `presets/` 旧格式、`patches/0001..0006` 与未启用的 `local-presets/gray-mode/`
+已删除,需要时从 git 历史取(`1d27f14` 及更早)。
