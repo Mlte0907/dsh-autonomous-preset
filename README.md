@@ -1,6 +1,6 @@
 # dsh-autonomous-preset
 
-DSH agent 预设「自主模式」(autonomous) 的备份与安装源,适配 **dsh 0.1.7-alpha.2** 的
+DSH agent 预设「自主模式」(autonomous) 的备份与安装源,适配 **dsh 0.2.0-rc.1** 的
 bundle 机制。
 
 > 历史:本仓库在 0.1.5-rc.1 时代以「目录直接放进 harness」的方式工作(`presets/` +
@@ -8,7 +8,7 @@ bundle 机制。
 > 新增/覆盖预设只能通过 bundle patch 插入一行 `@deepseek-ai/dsh-agent-preset` ——
 > 本仓库已按新机制改造,旧结构原样留档。
 
-## 安装(dsh 0.1.7-alpha.2)
+## 安装(dsh 0.2.0-rc.1)
 
 ```bash
 pnpm dsh plugin --profile web add github:Mlte0907/dsh-autonomous-preset
@@ -43,6 +43,17 @@ dsh-restart
 行集本身零改动:全部 row config 键(`prefix`/`maxBytes`/`sampleOverCapGlobResults`/
 `provider`/`backgroundMode`/`persona`/`toolFilter`/isolate)逐个对过 0.1.7 Config schema,
 无死键。
+
+### 0.2.0-rc.1 复核(2026-09-29)
+
+以上 6 条与行集在 0.2.0-rc.1 上逐条复核,结论不变,行集零改动:
+
+- `standard.patch.yml` 在 `dsh-v0.1.7-rc.1` 与 `dsh-v0.2.0-rc.1` 两个标签之间逐字节相同
+  —— 本预设对齐的基线没动过。
+- 本文件引用的 21 个 `@deepseek-ai/dsh-*` 包在 0.2.0-rc.1 树里全部可解析。
+- `teams-x` / `teamsx` 在 0.2.0-rc.1 的 `packages/` 与 `apps/` 里仍然零命中,第 1 条继续成立。
+
+仓库侧改动仅限版本表述(header、package.json description、README),预设行集与 persona 未动。
 
 ## 仓库结构
 
