@@ -44,7 +44,7 @@ dsh-restart
 `provider`/`backgroundMode`/`persona`/`toolFilter`/isolate)逐个对过 0.1.7 Config schema,
 无死键。
 
-### 0.2.0-rc.1 复核(2026-09-29)
+### 0.2.0-rc.1 复核与对齐(2026-09-29)
 
 以上 6 条与行集在 0.2.0-rc.1 上逐条复核,结论不变,行集零改动:
 
@@ -53,7 +53,11 @@ dsh-restart
 - 本文件引用的 21 个 `@deepseek-ai/dsh-*` 包在 0.2.0-rc.1 树里全部可解析。
 - `teams-x` / `teamsx` 在 0.2.0-rc.1 的 `packages/` 与 `apps/` 里仍然零命中,第 1 条继续成立。
 
-仓库侧改动仅限版本表述(header、package.json description、README),预设行集与 persona 未动。
+仓库侧改动两处:一是版本表述(header、`package.json` description、README);二是**删除
+`config` 里自带的 `name` / `description`**。`isBuiltInPreset` 把「自带 name 的声明」判为
+自有文案,留着会把所有语言都钉死成中文;删掉后与 harness 内置副本一致,走 0.2.0-rc.1 新增的
+`presetAutonomousName` / `presetAutonomousDescription` 字典键。代价:装到 0.1.7 机器上时
+不再有自带名称(该版本的字典键尚不存在)。工具行集与 persona 始终未动。
 
 ## 仓库结构
 

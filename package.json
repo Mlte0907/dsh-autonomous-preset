@@ -1,6 +1,6 @@
 {
   "name": "dsh-autonomous-preset",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "DSH agent preset 自主模式 (autonomous) — bundle patch for dsh 0.2.0-rc.1",
   "keywords": [
     "dsh",

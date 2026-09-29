@@ -65,8 +65,12 @@
       name: '@deepseek-ai/dsh-agent-preset'
       config:
         id: autonomous
-        name: 自主模式
-        description: 自主编码 Agent：先探索后动手，可逆步骤自主推进，用任务清单跟踪进度，把只读探索分派给子代理，宣称完成前先验证；第三方服务缺席时回退到本预设内置工具并明示。
+        # No `name` / `description` here on purpose: `isBuiltInPreset` in
+        # @deepseek-ai/dsh-agent-preset-registry treats a declaration that names
+        # itself as owning its own copy, so publishing them would pin every locale
+        # to this text. Leaving them absent resolves the roster through the
+        # `presetAutonomousName` / `presetAutonomousDescription` dictionary keys,
+        # which is what the built-in copy in the harness web-app bundle does.
         order: 5
         plugins:
           - id: persona
