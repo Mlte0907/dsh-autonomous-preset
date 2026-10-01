@@ -165,6 +165,43 @@ persona 四处改动,动机是**消除两处自相矛盾,并把静默失效变�
 用 dsh 自己的 `entryListSchema` 解析全部 bundle patch,并锁住 persona 的
 `BLOCKING GATE` / `Memory hygiene` / `本次未检索记忆` / `todo_write` 四处教义。
 
+### 2026-10-02:Reporting a skip 挪节 + 去掉「本机才有」的命令假设
+
+**一、`Reporting a skip` 两轮实测都没触发,根因是规则放错了节**
+
+10-01 上线后按验收步骤实测两轮纯问答:
+
+| 输入 | 检索了? | 报了 skip? |
+| --- | --- | --- |
+| `hello` | 否 ✅ 符合预期 | 否 ❌ |
+| `今天天气如何` | 否 ✅ | 否 ❌ —— 思考里明明出现了「the memory mentions 小鑫平板…」 |
+
+两个根因叠加,缺一都不会失效:
+
+1. **触发条件挂在内在判断上**:原句是 `If you judged that this task needs no memory search`。
+   问天气时模型从没进入「我判断要不要搜」这个框架,它直接干活了 —— **条件式触发基本不会fire**。
+2. **位置错了(主因)**:规则原本埋在 `BLOCKING GATE (search before you touch anything)` 里,
+   那节的适用范围是**动手改东西**。不改东西的轮次,模型读完标题就认定「整节不适用」,
+   不会把节内的报告规则当成有效 —— 而**这条其实是答案格式规则**。
+
+**改法**:移到 `Communicate results, not process` 之后(答案格式区),并把触发条件换成
+**可观测事实**:`Whether you searched is a fact you can check, not a judgment. If this turn's
+answer came without calling mcp__pangu__pangu_search_memories, and the turn was more than a
+bare greeting, …`。「bare greeting」排除 `hello`,让 10-01 那条用例继续成立。
+
+**回归保护**:测试新增位置断言 —— `BLOCKING GATE` 节内**不得**出现 `本次未检索记忆`,
+且该串必须出现在 `Communicate results` 之后。放错节会直接红。
+
+**二、`dsh-restart` 与本机 Chromium 路径被当成通用命令**
+
+`dsh-restart`(`~/.local/bin/dsh-restart`)与 `/usr/bin/chromium`、
+`~/.chromium-browser-snapshots` 都是**本机才有**的,却以通用口吻写进了面向所有用户的
+README 与 persona(模型直接读的那段)。别人照做会直接找不到命令。
+
+已改成「有 helper 用 helper,没有就 `systemctl --user restart dsh-web`,或停进程后
+`pnpm run start:web`」的三选一;Chromium 改成「先确认二进制能起来」。
+**与机器无关的那条事实保留:重启会轮换访问 token,旧的随旧进程作废。**
+
 ## 仓库结构
 
 | 路径 | 说明 |
