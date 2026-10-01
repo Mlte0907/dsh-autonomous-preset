@@ -17,7 +17,11 @@ DSH agent 预设「自主模式」(autonomous) 的**一份文件**。它不是�
     若该路径已存在就跳过(别重复加,重复 id 会让启动直接抛 Duplicate agent preset)。
 (2) skill —— 取 skills/change-impact/SKILL.md,放到 ~/.dsh/skills/change-impact/SKILL.md(全局生效);
     只想在当前项目生效则放 <项目>/.dsh/skills/change-impact/SKILL.md。目录不存在就建。
-装完:在 dsh 仓库根 pnpm run build,然后跑 dsh-restart(只有它打印的新 token 有效)。
+装完:在 dsh 仓库根 `pnpm run build`,再重启 dsh web 让预设生效。重启方式按你的环境三选一:
+  · `dsh-restart` —— 部分机器有的封装脚本,会顺带打印轮换后的新 token;
+  · `systemctl --user restart dsh-web` —— 用 systemd 用户服务跑的;
+  · 停掉现有 dsh web 进程,再 `pnpm run start:web`(start 跳过 build) —— 手动跑的。
+⚠ 重启会轮换访问 token:旧 token 随旧进程作废,用新输出的地址/token。
 装完自查:设置里能看到名为「自主模式」(autonomous)的预设;skill 目录下有 SKILL.md 且首行是 "---"。
 ```
 
@@ -41,7 +45,10 @@ DSH agent 预设「自主模式」(autonomous) 的**一份文件**。它不是�
    "./presets/autonomous.patch.yml"
    ```
 
-3. 重建并重启:`pnpm run build`,然后 `dsh-restart`(只有它输出的新 token 有效)。
+3. 重建并重启:`pnpm run build`,然后重启 dsh web。**`dsh-restart` 只是部分机器上的封装脚本,
+   不是 dsh 自带命令** —— 没有它就用 `systemctl --user restart dsh-web`(systemd 用户服务),
+   或停掉现有 dsh web 进程后 `pnpm run start:web`。
+   **重启会轮换访问 token**:旧 token 随旧进程作废,以新输出的地址/token 为准。
 
 **为什么第 2 步不能省**:预设没有目录扫描发现机制。`packages/boot/app-boot/src/profile.ts:73`
 的 `bundlePatchPaths()` 只返回 manifest `dsh.bundle.patch` 里列出的文件,再由
@@ -104,7 +111,11 @@ skill 不是预设的一部分,不改 `package.json`、不用 `dsh-restart`。ds
    头部注释与实际行集重新一致。
 4. **删除外部产品对齐表述**:header、description、tool-todo 注释中「仿照某外部 Agent 产品模式」的表述全部移除(当时的 `patches/0001` 为不可变 git am 补丁,内文保留;该补丁目录已随旧结构移出仓库,见 git 历史)。
 5. **注明回退机制**:第三方工具缺席时回退本预设自带能力——Team 工具集缺席 → subagent 委派(explore/judge/subagent + send_message/list_agents/interrupt_agent);Pangu MCP 缺席 → **明示用户**后用 todo/goal/skill 行维持状态,不静默跳过。
-6. **端到端 UI 验收与重启入 persona**:按历史记忆固化 Playwright 挂 `/usr/bin/chromium`(`~/.chromium-browser-snapshots` 那份是坏的,勿用)的真浏览器验收法,以及 `dsh-restart` 重启方式(只有其输出里的新 token 有效)。
+6. **端到端 UI 验收与重启入 persona**:按历史记忆固化 Playwright 真浏览器验收法,以及「改完 profile/bundle/preset 必须重启、**重启会轮换 token**」这条规则。
+   > 2026-10-02 修正:原写法把 `dsh-restart`(`~/.local/bin/dsh-restart`)与本机 Chromium 路径
+   > (`/usr/bin/chromium`、`~/.chromium-browser-snapshots`)当成了通用命令写进 persona ——
+   > **不是谁的机器都有这两个**。已改成「有 helper 用 helper,没有就用 systemd / 重启进程」的通用写法,
+   > 本机路径不再出现在面向其他用户的文本里。**token 会轮换**这条与机器无关,保留。
 
 行集本身零改动:全部 row config 键(`prefix`/`maxBytes`/`sampleOverCapGlobResults`/
 `provider`/`backgroundMode`/`persona`/`toolFilter`/isolate)逐个对过 0.1.7 Config schema,
