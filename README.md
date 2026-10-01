@@ -8,6 +8,22 @@ DSH agent 预设「自主模式」(autonomous) 的**一份文件**。它不是�
 > 新增预设只能靠 bundle patch 插入一行 `@deepseek-ai/dsh-agent-preset` ——
 > 仓库已收敛为下面这一份文件,旧结构留在 git 历史里(`1d27f14` 及更早)。
 
+## 一句话装好(整段复制给你的 coding agent)
+
+```text
+从 https://github.com/Mlte0907/dsh-autonomous-preset 装「自主模式」。两件事分开做,互不依赖:
+(1) 预设 —— 取根目录 cordis.patch.yml,复制为 <dsh仓库>/packages/bundle/web-app/presets/autonomous.patch.yml,
+    再把路径 "./presets/autonomous.patch.yml" 追加进同目录 package.json 的 dsh.bundle.patch 数组末尾;
+    若该路径已存在就跳过(别重复加,重复 id 会让启动直接抛 Duplicate agent preset)。
+(2) skill —— 取 skills/change-impact/SKILL.md,放到 ~/.dsh/skills/change-impact/SKILL.md(全局生效);
+    只想在当前项目生效则放 <项目>/.dsh/skills/change-impact/SKILL.md。目录不存在就建。
+装完:在 dsh 仓库根 pnpm run build,然后跑 dsh-restart(只有它打印的新 token 有效)。
+装完自查:设置里能看到名为「自主模式」(autonomous)的预设;skill 目录下有 SKILL.md 且首行是 "---"。
+```
+
+预设与 skill **可以只装一个**:预设是 agent 的人格与工具编排,skill 是独立的能力条目,
+不装预设时 skill 照样能被任何 dsh 会话发现。
+
 ## 放进内置预设列表(dsh 0.2.0-rc.1)
 
 **三步,缺一不生效:**
@@ -44,6 +60,33 @@ DSH agent 预设「自主模式」(autonomous) 的**一份文件**。它不是�
 > 2026-09-23 起,本机 dsh 已按上面的三步把它挂成**内置预设**;
 > 本仓库是那份文件的备份与同步源。「内部模式」预设已删除,其回退理念并入自主模式第 5 条
 > (文件见历史提交 a663ef6)。
+
+## Skills 放哪(与预设独立,可以只装这个)
+
+skill 不是预设的一部分,不改 `package.json`、不用 `dsh-restart`。dsh 按目录扫描发现,
+一个会话能看到下面几层(括号是优先级,数值越小越优先,同名时高优先级盖低的):
+
+| 目录 | 作用范围 | 什么时候用 |
+| --- | --- | --- |
+| `<项目>/.dsh/skills/` | 仅该项目 | 只想给某一个仓库用 |
+| `<项目>/.agents/skills/` | 仅该项目 | 同上,`.agents` 惯例 |
+| `~/.dsh/skills/` | **所有项目** | **默认选这个** |
+| `~/.agents/skills/` | 所有项目 | 同上,跨工具通用 |
+| `$DSH_BUNDLED_SKILL_DIR` | 随应用打包 | 只有你自己发 dsh 时才需要 |
+
+每个 skill 一个目录、一个 `SKILL.md`,frontmatter **必须**有 `name`(kebab-case)和
+`description`(纯字符串),否则该文件被忽略并在日志里 warn:
+
+```text
+~/.dsh/skills/
+  change-impact/
+    SKILL.md      ← name: change-impact + description + 正文
+```
+
+装完不用重启:skill 目录有 watcher,新增即进目录。**自查**:新会话里问"你有哪些 skill",
+或直接触发它的 description。
+
+> 参考实现见本仓库 `skills/change-impact/SKILL.md`(改完代码必须追查影响面)。
 
 ## 相对 0.1.5 版的调整(2026-09,逐条对着 0.1.7 源码取证)
 
@@ -86,13 +129,40 @@ DSH agent 预设「自主模式」(autonomous) 的**一份文件**。它不是�
 内置副本随 harness 升级一起变,本仓库不再单独维护文件头部措辞(该头部现在描述的是内置注册
 位置)。
 
+### 2026-10-01:记忆门从「每轮必搜」改成「动手前搜一次」+ 新增 change-impact skill
+
+persona 四处改动,动机是**消除两处自相矛盾,并把静默失效变可见**:
+
+| # | 改动 | 为什么 |
+| --- | --- | --- |
+| 1 | 标题 `MUST execute before ANY tool call` → `search before you touch anything`;正文从「FIRST action of EVERY session / 说 hello 也先搜」改成「首次**动手**前搜一次,只读只聊的会话全程不搜」 | 原写法对每条消息强制检索,与同文件 `Memory hygiene`(记忆仅供参考、要核实)直接打架;且每轮检索会把无关记忆灌进上下文,正是该节要防的风险源 |
+| 2 | `Step 1` 从「BEFORE your first tool call」→「before your first mutation」,并补「仅当任务转向或要碰之前结果没覆盖的东西时才再搜」 | 与第 1 条配套,明确重搜的触发条件 |
+| 3 | 新增 **Reporting a skip**:判断不需检索时,回答开头用中文写一行 `本次未检索记忆:<原因>` | 软约束最坏的不是不生效,是**静默失效**。这行让跳过变得可核查——没说就跳过 = 事故,说了 = 一个决定 |
+| 4 | todo 段补:改代码的计划**固定最后一项**是「跑覆盖改动的检查并读输出」,且**读到结果前**保持 in_progress | 原 `Verify before you claim done` 是句空话;接进本 preset 已有的单前线纪律(`allowParallelInProgress: false`),清单本身成为验收清单 |
+
+**明确放弃的方案**:写一个 `tools/pre-execute` 拦截插件,让「先搜记忆」变成结构强制。
+放弃理由——(a)失败代价是质量下降而非事故,不属于 dsh 所说「可机械校验的不变量」;
+(b)会引入新故障点:盘古 MCP 断连是已发生过的常态(见 `dsh-pangu-mcp-disconnect-report.md`),
+逃生路径一旦有 bug 就是硬卡死;(c)与本 preset `DOCTRINAL, not mechanical` 的设计冲突;
+(d)1–2 小时 + 双语 README 的成本换一个软收益。**要上之前应先有证据**:统计连续若干会话的实际检索率。
+
+同时新增 `skills/change-impact/`:改完符号必须追查全部消费者,并显式声明**「搜不到不等于没用」**
+(空 grep 不构成删除依据)。这条是自主模式与 obra/superpowers 共同的盲区
+(上游 Issue #2266「修复不断制造新 bug,因为没有 skill 要求追踪改动影响」、#2261)。
+
+回归保护:harness 侧新增 `packages/bundle/web-app/tests/bundle-patches.spec.ts`,
+用 dsh 自己的 `entryListSchema` 解析全部 bundle patch,并锁住 persona 的
+`BLOCKING GATE` / `Memory hygiene` / `本次未检索记忆` / `todo_write` 四处教义。
+
 ## 仓库结构
 
 | 路径 | 说明 |
 | --- | --- |
-| `cordis.patch.yml` | 全部内容:插入 `preset-autonomous` 行(`id: autonomous`、`order: 5`、22 行插件) |
+| `cordis.patch.yml` | 预设全部内容:插入 `preset-autonomous` 行(`id: autonomous`、`order: 5`、22 行插件) |
+| `skills/change-impact/SKILL.md` | 附带的 skill:改完代码必须追查影响面。与预设独立,可单独装 |
 | `README.md` | 本文件 |
 
-仓库里没有别的东西:没有 `package.json`,不是 bundle 也不是插件。
+仓库里没有 `package.json`,不是 bundle 也不是插件——预设靠目标机自己的
+`dsh.bundle.patch` 数组挂载,skill 靠目标机的 skill 目录扫描发现,两者都无需本仓库可执行。
 0.1.5 时代的 `presets/` 旧格式、`patches/0001..0006` 与未启用的 `local-presets/gray-mode/`
 已删除,需要时从 git 历史取(`1d27f14` 及更早)。
