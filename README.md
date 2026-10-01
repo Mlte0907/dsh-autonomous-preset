@@ -17,11 +17,17 @@ DSH agent 预设「自主模式」(autonomous) 的**一份文件**。它不是�
     若该路径已存在就跳过(别重复加,重复 id 会让启动直接抛 Duplicate agent preset)。
 (2) skill —— 取 skills/change-impact/SKILL.md,放到 ~/.dsh/skills/change-impact/SKILL.md(全局生效);
     只想在当前项目生效则放 <项目>/.dsh/skills/change-impact/SKILL.md。目录不存在就建。
-装完:在 dsh 仓库根 `pnpm run build`,再重启 dsh web 让预设生效。重启方式按你的环境三选一:
-  · `dsh-restart` —— 部分机器有的封装脚本,会顺带打印轮换后的新 token;
-  · `systemctl --user restart dsh-web` —— 用 systemd 用户服务跑的;
-  · 停掉现有 dsh web 进程,再 `pnpm run start:web`(start 跳过 build) —— 手动跑的。
-⚠ 重启会轮换访问 token:旧 token 随旧进程作废,用新输出的地址/token。
+装完:在 dsh 仓库根 `pnpm run build`,再**重启你实际在用的那个端**,预设才会出现:
+  · 用 **Web**(默认端口 3080)→ 三选一:
+      - `dsh-restart` —— 部分机器有的封装脚本,会顺带打印轮换后的新 token;
+      - `systemctl --user restart dsh-web` —— 用 systemd 用户服务跑的;
+      - 停掉现有 dsh web 进程,再 `pnpm run start:web`(start 跳过 build) —— 手动跑的。
+      ⚠ Web 重启**会轮换访问 token**:旧 token 随旧进程作废,用新输出的地址/token。
+  · 用 **桌面端**(Electron,默认端口 19387)→ 退出应用再打开:
+      开发态 `pnpm run start:desktop`(要一起构建用 `dev:desktop`),打包安装版直接重启应用本身。
+      **桌面端不发 `?token=`** —— 它经 Electron 内部 IPC 认证,重启不会让任何 URL 失效。
+  两个端可以并存,只重启你在用的那个;`dsh-restart` 只管 web(写死 3080),对桌面端无效。
+  **只改了 preset 而没重启,预设不会出现。**
 装完自查:设置里能看到名为「自主模式」(autonomous)的预设;skill 目录下有 SKILL.md 且首行是 "---"。
 ```
 
@@ -45,10 +51,19 @@ DSH agent 预设「自主模式」(autonomous) 的**一份文件**。它不是�
    "./presets/autonomous.patch.yml"
    ```
 
-3. 重建并重启:`pnpm run build`,然后重启 dsh web。**`dsh-restart` 只是部分机器上的封装脚本,
-   不是 dsh 自带命令** —— 没有它就用 `systemctl --user restart dsh-web`(systemd 用户服务),
-   或停掉现有 dsh web 进程后 `pnpm run start:web`。
-   **重启会轮换访问 token**:旧 token 随旧进程作废,以新输出的地址/token 为准。
+3. 重建并重启:`pnpm run build`,然后重启**你实际在用的那个端** —— 预设在进程启动时加载,
+   **不重启不生效**。dsh 有 Web 与桌面端两条产品线,重启方式和 token 行为都不同:
+
+   - **Web(默认 3080)**:`dsh-restart` —— 部分机器上的封装脚本,**不是 dsh 自带命令**;
+     没有它就用 `systemctl --user restart dsh-web`(systemd 用户服务),
+     或停掉现有 dsh web 进程后 `pnpm run start:web`。
+     ⚠ **会轮换访问 token**:旧 token 随旧进程作废,以新输出的地址/token 为准。
+   - **桌面端(Electron,默认 19387)**:退出应用再打开 —— 开发态 `pnpm run start:desktop`
+     (要一起构建用 `pnpm run dev:desktop`),打包安装版直接重启应用本身。
+     **不发 `?token=`**:认证走 Electron 内部 IPC,重启不会让任何 URL 失效。
+
+   两个端**可以并存**,只重启你在用的那个;`dsh-restart` 写死 3080、**只管 web**,
+   对桌面端无效,反之重启桌面端也不会重载 web。
 
 **为什么第 2 步不能省**:预设没有目录扫描发现机制。`packages/boot/app-boot/src/profile.ts:73`
 的 `bundlePatchPaths()` 只返回 manifest `dsh.bundle.patch` 里列出的文件,再由
@@ -201,6 +216,23 @@ README 与 persona(模型直接读的那段)。别人照做会直接找不到命
 已改成「有 helper 用 helper,没有就 `systemctl --user restart dsh-web`,或停进程后
 `pnpm run start:web`」的三选一;Chromium 改成「先确认二进制能起来」。
 **与机器无关的那条事实保留:重启会轮换访问 token,旧的随旧进程作废。**
+
+**三、同一天补的第二处:重启说明只写了 web,漏了桌面端**
+
+上面那版仍然隐含「你用的是 dsh web」。但 dsh 有**两条产品线**,重启方式和 token 行为都不同:
+
+| | **Web** | **桌面端(Electron)** |
+| --- | --- | --- |
+| 默认端口 | 3080 | 19387 |
+| 怎么重启 | `dsh-restart` / `systemctl --user restart dsh-web` / 停进程后 `pnpm run start:web` | 退出应用再打开;开发态 `pnpm run start:desktop`(`dev:desktop` 含构建) |
+| 访问令牌 | **会轮换**,旧的随旧进程作废 | **不发 `?token=`** —— 经 Electron 内部 IPC 认证,URL 不失效 |
+
+已核实的证据:`apps/desktop/lib/main.js` 里出现的 6 处 `token` 是**平台账号凭据**
+(`origin` + `token` + `userId`,私有 Node IPC 传递),**不是 web 的 `?token=` 访问令牌**;
+`dsh-restart` 脚本写死 `PORT=3080`,**只管 web**。
+
+三处同步改:README「一句话装好」、README 第 3 步(改成按端分列的两条)、persona 的重启段。
+并补明「两个端可以并存,只重启你在用的那个;重启一个不会重载另一个」。
 
 ## 仓库结构
 
