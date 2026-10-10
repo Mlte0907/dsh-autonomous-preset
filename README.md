@@ -234,6 +234,42 @@ README 与 persona(模型直接读的那段)。别人照做会直接找不到命
 三处同步改:README「一句话装好」、README 第 3 步(改成按端分列的两条)、persona 的重启段。
 并补明「两个端可以并存,只重启你在用的那个;重启一个不会重载另一个」。
 
+### 2026-10-10:persona 里的 `{{cwd}}` 已失效,以及升级 dsh 时的必查清单
+
+`{{cwd}}` 这个**提示词变量**在 harness `79bd3d8da7`(2026-09-13)被移除:当前工作目录改由
+`dsh-working-directory` 以 prompt **context** 注入,不再是模板变量。本文件的 persona prefix
+里那句 `Your working directory is {{cwd}}.` 一直没跟着改,后果是**会话起不来**——提示词插值
+是严格的(`packages/core/system-prompt/src/index.ts:361`),未注册变量在组装阶段直接抛,
+发生在模型请求之前。今天 harness 侧的 loop 只注册两个变量:`provider` 与 `model`
+(`packages/core/agent-loop/src/index.ts:389`)。
+
+这次能潜伏近一个月,是因为**没有任何测试渲染过这份 persona**:e2e 泳道里逐个 preset 断言
+`standard`/`minimal`/`cordis`/`ptc`,唯独漏了 `autonomous`;同泳道里那条 preset 名单断言还因为
+`autonomous` 进 bundle 后没同步而一直红着。harness 侧已补
+`apps/cli/tests/web-agent-presets.e2e.ts` 的 `renders every shipped preset persona against the
+variables the loop registers`,它枚举 `agentPresets.list()`,以后新增 preset 自动覆盖。
+
+> 上述测试住在 e2e 泳道(`vitest.e2e.config.ts`),不在 `pnpm run test` 里,**本地与 CI 都不
+> 常规跑**。它存在,但别把「有测试」当成「跑过了」。
+
+#### 升级 dsh 时按这份清单过一遍
+
+本机 harness 跑的是 `upgrade/dsh-v0.2.1-alpha.2` 分支(相对 `origin/master` 领先 5 个提交,
+推在 fork `Mlte0907/deepseek-harness` 的 `backup` 远端)。换版本时:
+
+1. **先 `git fetch`,再看远端**。本地 `origin/main` / `origin/master` 引用可能停在很早的提交,
+   拿它当远端真相会得出「对方掉队」的错误结论——2026-10-10 就因为没 fetch,误判本仓库少了
+   10-02 那四个提交,差点整file 覆盖掉它们。
+2. **重跑逐字节核对**:`diff <dsh仓库>/packages/bundle/web-app/presets/autonomous.patch.yml
+   cordis.patch.yml`。两份必须完全相同;harness 那份是权威,本仓库跟随。
+3. **扫 `{{...}}` 变量**:harness 每次移除或改名提示词变量,本文件的 persona 都可能引用着它。
+   现在合法的只有 `{{model}}` 与 `{{provider}}`。改完至少起一个 autonomous 会话验证。
+4. **跑那条渲染测试**:`pnpm vitest run --config vitest.e2e.config.ts
+   apps/cli/tests/web-agent-presets.e2e.ts -t "renders every shipped preset persona"`。
+   它红就说明有 preset 引用了未注册变量。注意本机 `pnpm run lint` 会被 OOM 杀掉,
+   oxlint 要按目录分批跑(`DSH_OXLINT_THREADS=2`)。
+5. **只重启你在用的那个端**,并按上面的 token 规则处理地址。
+
 ## 仓库结构
 
 | 路径 | 说明 |
